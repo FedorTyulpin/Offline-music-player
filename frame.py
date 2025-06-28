@@ -17,12 +17,13 @@ class MusicAPP(tk.Tk):
         self.title("Music player")
         self.geometry("1000x600")
 
-        self.playlists = {name:Paylist(name) for name in  [x[:-4] for x in os.listdir("meta/playlist/")]}
+        self.playlists = {name: Paylist(name) for name in ["All tracks 🔄", "Favorites ❤"]}
+        self.playlists = reorder_dict({name:Paylist(name) for name in  [x[:-4] for x in os.listdir("meta/playlist/")]},("All tracks 🔄", "Favorites ❤"))
         self.playlists_var = Variable(value=list(self.playlists))
 
-        self.opened_playlist = "All track"
+        self.opened_playlist = "All tracks 🔄"
 
-        self.curent_playlist = MediaPlayer("All track",self.playlists[self.opened_playlist].songs_path_list(),start_index=0)
+        self.curent_playlist = MediaPlayer("All tracks 🔄",self.playlists[self.opened_playlist].songs_path_list(),start_index=0)
         self.columns = ("№", "Name","Author", "Album", "duration")
 
 
@@ -45,27 +46,32 @@ class MusicAPP(tk.Tk):
         hotkey_thread.start()
 
     def delete_playlist(self):
-        playlist_to_delete = self.opened_playlist
-        if playlist_to_delete != "All track":
+        playlist_to_delete = self.playlists_list.get(self.playlists_list.curselection())
+        if not playlist_to_delete.startswith(("🚹", "💽", "💿", "⭐", "All tracks 🔄", "Favorites ❤")):
             if askyesno("Delete playlist", f"Are you sure you want to delete the playlist '{playlist_to_delete}'?"):
                 os.remove(f"meta/playlist/{playlist_to_delete}.txt")
                 del self.playlists[playlist_to_delete]
 
                 self.playlists_var = Variable(value=list(self.playlists))
                 self.playlists_list.configure(listvariable=self.playlists_var)
-                self.open_playlist(name="All track")
+                self.open_playlist(name="All tracks 🔄")
         else:
-            showerror("Error", "You can`t delete playlist 'All track'")
+            showerror("Error", f"You can`t delete playlist '{playlist_to_delete}'")
 
     def create_playlist(self):
         playlist_name = askstring("Create new playlist", "Enter new playlist name:")
-        if playlist_name not in list(self.playlists):
+
+        if (playlist_name not in list(self.playlists) and not playlist_name.startswith(("🚹", "💽", "💿", "⭐", "All tracks 🔄", "Favorites ❤"))) and playlist_name :
             self.playlists[playlist_name] = Paylist(playlist_name)
-            self.playlists_var = Variable(value=list(self.playlists))
+            self.playlists_var = Variable(value=reorder_list(sorted(list(self.playlists)), ["All tracks 🔄", "Favorites ❤"]))
             self.playlists_list.configure(listvariable=self.playlists_var)
             self.open_playlist(name=playlist_name)
 
 
+        elif playlist_name is None:
+            pass
+        elif not playlist_name or playlist_name.startswith(("🚹", "💽", "💿", "⭐", "All tracks 🔄", "Favorites ❤")):
+            showerror("Error", "Wrong playlist name")
         else:
             showerror("Error", "Playlist with this name already exist")
 
@@ -88,17 +94,27 @@ class MusicAPP(tk.Tk):
     def add_to_quen(self):
         item = self.songs.selection()
         self.curent_playlist.add_to_queue(f'meta/music/{self.songs.item(item)["values"][1]}.mp3')
-
+        self.open_playlist(name=self.curent_playlist.title)
         self.update_song_display(self.curent_playlist.get_current_song())
 
-    def add_to_playlist(self):
-        playlists = list(self.playlists)
-        item = self.songs.selection()
-        song = self.songs.item(item)["values"][1]
-        playlists.remove("All track")
+    def add_song_to_playlists(self):
+        song = self.curent_playlist.get_current_song()
+        song_info = get_mp3_metadata("meta/music/" + song)
+        playlists = [x for x in list(self.playlists) if song_info["title"] not in self.playlists[x].songs_list() and not x.startswith(("🚹", "💽", "💿", "⭐", "All tracks 🔄"))]
 
-        for pl in MultiChoiceDialog.askchoices(self, "", "", playlists):
-            self.playlists[pl].add_to_playlist(song)
+        for pl in MultiChoiceDialog.askchoices(self, "Add song to playlists", f"With playlist you want to add '{song_info["title"]}'?", playlists):
+            self.playlists[pl].add_to_playlist(song_info["title"])
+
+    def add_songs_to_playlist(self):
+        playlist = self.opened_playlist
+        if not playlist.startswith(("🚹", "💽", "💿", "⭐", "All tracks 🔄")):
+            all_songs = [x for x in self.playlists["All tracks 🔄"].songs_list() if x not in self.playlists[playlist].songs_list()]
+
+            for song in MultiChoiceDialog.askchoices(self, "Add songs to playlist", f"With songs you want to add to '{playlist}'?", all_songs):
+                self.playlists[playlist].add_to_playlist(song)
+                self.open_playlist(name=playlist)
+        else:
+            showerror("Error", "Unable to add songs to generated playlist")
 
     def update_song_display(self, song_name):
         """Обработчик события - вызывается при смене песни"""
@@ -124,7 +140,6 @@ class MusicAPP(tk.Tk):
 
     def click_music_event(self, event):
         item = self.songs.selection()
-        print(self.curent_playlist.queue)
 
         region = self.songs.identify_region(event.x, event.y)
 
@@ -180,9 +195,9 @@ class MusicAPP(tk.Tk):
         # Кнопка "Add to Playlist"
         add_to_playlist_btn = ttk.Button(
             buttons_frame,
-            text="➕ Add to Playlist",
+            text="➕ Add songs to Playlist",
             style="Secondary.TButton",
-            command= lambda: self.add_to_playlist()
+            command= lambda: self.add_songs_to_playlist()
 
         )
         add_to_playlist_btn.grid(row=0, column=0, padx=(0, 5))
@@ -402,8 +417,17 @@ class MusicAPP(tk.Tk):
         )
         self.volume_slider.grid(row=0, column=1)
 
+        add_to_playlist_btn = ttk.Button(
+            self.lower_label,
+            text="➕",
+            style="Secondary.TButton",
+            command=lambda: self.add_song_to_playlists()
+
+        )
+        add_to_playlist_btn.grid(row=0, column=3, padx=(0, 5))
+
     def open_playlist(self, event=None, name=None):
-        name = list(self.playlists)[self.playlists_list.curselection()[0]] if name is None else name
+        name = reorder_list(sorted(list(self.playlists)), ["All tracks 🔄", "Favorites ❤"])[self.playlists_list.curselection()[0]] if name is None else name
         self.opened_playlist = name
 
         self.main_label.destroy()

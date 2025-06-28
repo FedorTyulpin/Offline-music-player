@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, simpledialog
 import tkinter as tk
 from tkinter import Listbox, Frame, Button, Label, MULTIPLE, END, Scrollbar
+from collections import OrderedDict
 
 def seconds_to_minutes_seconds(seconds):
   """
@@ -38,6 +39,38 @@ def get_mp3_metadata(file_path):
     }
 
 
+from collections import OrderedDict
+
+
+def reorder_dict(original_dict, first_keys):
+    unique_keys = []
+    seen = set()
+    for key in first_keys:
+        if key not in seen:
+            seen.add(key)
+            unique_keys.append(key)
+
+    new_dict = OrderedDict()
+    # Добавляем выбранные ключи
+    for key in unique_keys:
+        if key in original_dict:
+            new_dict[key] = original_dict[key]
+
+    # Добавляем остальные
+    for key, value in original_dict.items():
+        if key not in seen:  # используем то же множество seen
+            new_dict[key] = value
+
+    return dict(new_dict)
+
+def reorder_list(original_list, first_elements):
+    temp = original_list.copy()  # Создаем копию списка
+    result = []
+    for element in first_elements:
+        if element in temp:
+            result.append(element)
+            temp.remove(element)  # Удаляем только первое вхождение
+    return result + temp
 
 class Paylist:
     def __init__(self, text):
@@ -138,10 +171,53 @@ class MultiChoiceDialog:
 
 
 
+all_tr = Paylist("All tracks 🔄")
+song_authors = {}
+albums = {}
+
+
+for song in os.listdir("meta/music"):
+    all_tr.add_to_playlist(song[:-4])
+    song_info = get_mp3_metadata(f"meta/music/{song}")
+    try:
+        for authors in song_info["artist"].split("/"):
+
+            if authors in song_authors:
+                song_authors[authors].append(song_info['title'])
+            else:
+                song_authors[authors] = []
+                song_authors[authors].append(song_info['title'])
+
+        if song_info["album"] in albums:
+            albums[song_info["album"]].append(song_info['title'])
+        else:
+            albums[song_info["album"]] = []
+            albums[song_info["album"]].append(song_info['title'])
+    except:
+        pass
+
+for artist in song_authors.keys():
+    songs = song_authors[artist]
+    pl = Paylist(f"🚹 {artist}")
+    for song in songs:
+        pl.add_to_playlist(song)
+
+for album in albums.keys():
+    songs = albums[album]
+
+    if len(songs) < 4:
+        pl = Paylist(f"⭐ {album}")
+    elif 4 <= len(songs) <= 8:
+        pl = Paylist(f"💽 {album}")
+    else:
+        pl = Paylist(f"💿 {album}")
+
+    for song in songs:
+        pl.add_to_playlist(song)
+
 
 if __name__ == "__main__":
+    print("hello!")
 
-    all_tr = Paylist("All track")
-    for song in os.listdir("meta/music"):
-        all_tr.add_to_playlist(song[:-4])
+
 
