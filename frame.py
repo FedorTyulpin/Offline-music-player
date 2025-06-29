@@ -19,7 +19,7 @@ class MusicAPP(tk.Tk):
 
         self.playlists = {name: Paylist(name) for name in ["All tracks 🔄", "Favorites ❤"]}
         self.playlists = reorder_dict({name:Paylist(name) for name in  [x[:-4] for x in os.listdir("meta/playlist/")]},("All tracks 🔄", "Favorites ❤"))
-        self.playlists_var = Variable(value=list(self.playlists))
+        self.playlists_var = Variable(value=reorder_list(sorted(list(self.playlists)), ["All tracks 🔄", "Favorites ❤"]))
 
         self.opened_playlist = "All tracks 🔄"
 
@@ -96,6 +96,7 @@ class MusicAPP(tk.Tk):
         self.curent_playlist.add_to_queue(f'meta/music/{self.songs.item(item)["values"][1]}.mp3')
         self.open_playlist(name=self.curent_playlist.title)
         self.update_song_display(self.curent_playlist.get_current_song())
+        print(self.curent_playlist.get_queue())
 
     def add_song_to_playlists(self):
         song = self.curent_playlist.get_current_song()
@@ -411,8 +412,8 @@ class MusicAPP(tk.Tk):
             volume_frame,
             length=120,
             from_=0,
-            to=100,
-            value=100,
+            to=25,
+            value=25,
             command=self.curent_playlist.set_volume,
         )
         self.volume_slider.grid(row=0, column=1)

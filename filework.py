@@ -26,6 +26,7 @@ def get_mp3_metadata(file_path):
     if not audio.tag:
         return {"error": "No ID3 tag found"}
 
+
     return {
         "title": audio.tag.title,
         "artist": audio.tag.artist,
@@ -33,7 +34,7 @@ def get_mp3_metadata(file_path):
         "album_artist": audio.tag.album_artist,
         "year": audio.tag.recording_date,
         "genre": audio.tag.genre.name if audio.tag.genre else None,
-        "duration": seconds_to_minutes_seconds(audio.info.time_secs),
+        "duration": seconds_to_minutes_seconds(audio.info.time_secs if audio.info is not None else 0) ,
         "lyrics": audio.tag.lyrics[0].text if audio.tag.lyrics else None,
         "album_art": "Yes" if audio.tag.images else "No"
     }
@@ -178,8 +179,9 @@ albums = {}
 
 for song in os.listdir("meta/music"):
     all_tr.add_to_playlist(song[:-4])
-    song_info = get_mp3_metadata(f"meta/music/{song}")
+
     try:
+        song_info = get_mp3_metadata(f"meta/music/{song}")
         for authors in song_info["artist"].split("/"):
 
             if authors in song_authors:
@@ -204,6 +206,8 @@ for artist in song_authors.keys():
 
 for album in albums.keys():
     songs = albums[album]
+    for sumb in "/\\*:|<>?":
+        album = album.replace(sumb, "")
 
     if len(songs) < 4:
         pl = Paylist(f"⭐ {album}")

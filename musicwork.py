@@ -40,11 +40,12 @@ class MediaPlayer:
 
     def _handle_next_track(self):
         """Обработка перехода к следующему треку"""
-        if self.next_from_queue and self.queue:
+        if self.queue:
             # Если нужно перейти к очереди, берем первый трек из очереди
             song = self.queue.pop(0)
             self._play_song_directly(song)
-            self.next_from_queue = False
+
+            self.next_from_queue = True if self.queue else False
             return
 
         # Переходим к следующему треку в плейлисте
